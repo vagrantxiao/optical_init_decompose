@@ -17,7 +17,7 @@ const int default_depth = 1;
 
 // calculate gradient in x and y directions
 void gradient_xy_calc(hls::stream<bit32> & Input_1,
-    pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
+		hls::stream<bit32> & Output_1,
     pixel_t gradient_y[MAX_HEIGHT][MAX_WIDTH])
 {
   #pragma HLS interface ap_fifo port=frame
@@ -50,7 +50,7 @@ void gradient_xy_calc(hls::stream<bit32> & Input_1,
       if (r<MAX_HEIGHT && c<MAX_WIDTH)
       {
     	bit32 buf = Input_1.read();
-        smallbuf[4] = (pixel_t)(buf(23, 16)) / 255.0f;
+        smallbuf[4] = (pixel_t)(buf(23, 16));
       }
       else if (c < MAX_WIDTH)
         smallbuf[4] = 0.0f;
@@ -96,12 +96,14 @@ void gradient_xy_calc(hls::stream<bit32> & Input_1,
           x_grad += window.getval(2,i)*GRAD_WEIGHTS[i];
           y_grad += window.getval(i,2)*GRAD_WEIGHTS[i];
         }
-        gradient_x[r-2][c-2] = x_grad/12;
+        //gradient_x[r-2][c-2] = x_grad/12;
+        Output_1.write(x_grad/12);
         gradient_y[r-2][c-2] = y_grad/12;
       }
       else if(r>=2 && c>=2)
       {
-        gradient_x[r-2][c-2] = 0;
+        //gradient_x[r-2][c-2] = 0;
+    	Output_1.write(0);
         gradient_y[r-2][c-2] = 0;
       }
     }
@@ -129,12 +131,12 @@ void gradient_z_calc(
       #pragma HLS pipeline II=1
       frames_t buf;
       buf = Input_1.read();
-      pixel_t in1 = (pixel_t)(buf(7 ,  0)) / 255.0f;
-      pixel_t in2 = (pixel_t)(buf(15,  8)) / 255.0f;
-      pixel_t in3 = (pixel_t)(buf(23, 16)) / 255.0f;
-      pixel_t in4 = (pixel_t)(buf(31, 24)) / 255.0f;
+      pixel_t in1 = (pixel_t)(buf(7 ,  0));
+      pixel_t in2 = (pixel_t)(buf(15,  8));
+      pixel_t in3 = (pixel_t)(buf(23, 16));
+      pixel_t in4 = (pixel_t)(buf(31, 24));
       buf = Input_2.read();
-      pixel_t in5 = (pixel_t)(buf(7 ,  0)) / 255.0f;
+      pixel_t in5 = (pixel_t)(buf(7 ,  0));
       gradient_z[r][c] = (in1*GRAD_WEIGHTS[0]
                         + in2*GRAD_WEIGHTS[1]
                         + in3*GRAD_WEIGHTS[2]
@@ -145,7 +147,7 @@ void gradient_z_calc(
 }
 
 // average the gradient in y direction
-void gradient_weight_y(pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
+void gradient_weight_y(hls::stream<bit32> & Input_1,
     pixel_t gradient_y[MAX_HEIGHT][MAX_WIDTH],
     pixel_t gradient_z[MAX_HEIGHT][MAX_WIDTH],
     gradient_t filt_grad[MAX_HEIGHT][MAX_WIDTH])
@@ -167,7 +169,7 @@ void gradient_weight_y(pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
       {
         buf.shift_pixels_up(c);
         gradient_t tmp;
-        tmp.x = gradient_x[r][c];
+        tmp.x = (pixel_t)Input_1.read();
         tmp.y = gradient_y[r][c];
         tmp.z = gradient_z[r][c];
         buf.insert_bottom_row(tmp,c);
@@ -425,7 +427,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
 	hls::stream<bit32> unpack_out_4;
 	hls::stream<bit32> unpack_out_5;
 	hls::stream<bit32> unpack_out_6;
-
+	hls::stream<bit32> gradient_xy_calc_out1;
 
   // FIFOs connecting the stages
   static pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH];
@@ -478,24 +480,24 @@ void optical_flow(hls::stream<frames_t> & Input_1,
       //frame3_a[r][c] = (pixel_t)(buf(23, 16)) / 255.0f;
       unpack_out_1.write(buf(31, 0));
 
-      frame1_a[r][c] = (pixel_t)(buf(7 ,  0)) / 255.0f;
+      //frame1_a[r][c] = (pixel_t)(buf(7 ,  0)) / 255.0f;
       unpack_out_2.write(buf(31, 0));
 
-      frame2_a[r][c] = (pixel_t)(buf(15,  8)) / 255.0f;
+      //frame2_a[r][c] = (pixel_t)(buf(15,  8)) / 255.0f;
 
-      frame3_b[r][c] = (pixel_t)(buf(23, 16)) / 255.0f;
+      //frame3_b[r][c] = (pixel_t)(buf(23, 16)) / 255.0f;
 
-      frame4_a[r][c] = (pixel_t)(buf(31, 24)) / 255.0f;
+      //frame4_a[r][c] = (pixel_t)(buf(31, 24)) / 255.0f;
 
-      frame5_a[r][c] = (pixel_t)(buf(39, 32)) / 255.0f;
+      //frame5_a[r][c] = (pixel_t)(buf(39, 32)) / 255.0f;
       unpack_out_3.write(buf(63, 32));
     }
   }
 
   // compute 
-  gradient_xy_calc(unpack_out_1, gradient_x, gradient_y);
+  gradient_xy_calc(unpack_out_1, gradient_xy_calc_out1, gradient_y);
   gradient_z_calc(unpack_out_2, unpack_out_3, gradient_z);
-  gradient_weight_y(gradient_x, gradient_y, gradient_z, y_filtered);
+  gradient_weight_y(gradient_xy_calc_out1, gradient_y, gradient_z, y_filtered);
   gradient_weight_x(y_filtered, filtered_gradient);
   outer_product(filtered_gradient, out_product);
   tensor_weight_y(out_product, tensor_y);

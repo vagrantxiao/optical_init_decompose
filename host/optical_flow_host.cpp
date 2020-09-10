@@ -51,7 +51,7 @@ void check_results(velocity_t output[MAX_HEIGHT][MAX_WIDTH])
 
 
   double avg_error = sum / (MAX_HEIGHT*MAX_WIDTH);
-  printf("Correct Average error: -1.430295 degrees\n");
+  printf("Correct Average error: -0.625107 degrees\n");
   printf("Average error: %lf degrees\n", avg_error);
 
 }
