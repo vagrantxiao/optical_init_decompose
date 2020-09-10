@@ -112,9 +112,6 @@ void gradient_xy_calc(hls::stream<bit32> & Input_1,
 void gradient_z_calc(
 		hls::stream<bit32> & Input_1,
 		hls::stream<bit32> & Input_2,
-    pixel_t frame3[MAX_HEIGHT][MAX_WIDTH], 
-    pixel_t frame4[MAX_HEIGHT][MAX_WIDTH], 
-    pixel_t frame5[MAX_HEIGHT][MAX_WIDTH], 
     pixel_t gradient_z[MAX_HEIGHT][MAX_WIDTH])
 {
   #pragma HLS interface ap_fifo port=frame1
@@ -497,7 +494,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
 
   // compute 
   gradient_xy_calc(unpack_out_1, gradient_x, gradient_y);
-  gradient_z_calc(unpack_out_2, unpack_out_3, frame3_b, frame4_a, frame5_a, gradient_z);
+  gradient_z_calc(unpack_out_2, unpack_out_3, gradient_z);
   gradient_weight_y(gradient_x, gradient_y, gradient_z, y_filtered);
   gradient_weight_x(y_filtered, filtered_gradient);
   outer_product(filtered_gradient, out_product);
