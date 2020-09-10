@@ -329,7 +329,9 @@ void outer_product(
 // tensor weight
 void tensor_weight_y(//outer_t outer[MAX_HEIGHT][MAX_WIDTH],
 		hls::stream<bit32> & Input_1,
-                     tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH])
+		hls::stream<bit32> & Output_1
+                     //tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH]
+												   )
 {
   hls::LineBuffer<3,MAX_WIDTH,outer_t> buf;
   const pixel_t TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
@@ -396,13 +398,39 @@ void tensor_weight_y(//outer_t outer[MAX_HEIGHT][MAX_WIDTH],
       }
       if(r >= 1)
       { 
-        tensor_y[r-1][c] = acc;      
+        //tensor_y[r-1][c] = acc;
+        bit32 out_tmp;
+        out_tmp.range(31,0) = acc.val[0].range(31,0);
+        Output_1.write(out_tmp);
+        out_tmp.range(15,0) = acc.val[0].range(47,32);
+        out_tmp.range(31,16) = acc.val[1].range(15,0);
+        Output_1.write(out_tmp);
+        out_tmp.range(31,0) = acc.val[1].range(47,16);
+        Output_1.write(out_tmp);
+
+        out_tmp.range(31,0) = acc.val[2].range(31,0);
+        Output_1.write(out_tmp);
+        out_tmp.range(15,0) = acc.val[2].range(47,32);
+        out_tmp.range(31,16) = acc.val[3].range(15,0);
+        Output_1.write(out_tmp);
+        out_tmp.range(31,0) = acc.val[3].range(47,16);
+        Output_1.write(out_tmp);
+
+        out_tmp.range(31,0) = acc.val[4].range(31,0);
+        Output_1.write(out_tmp);
+        out_tmp.range(15,0) = acc.val[4].range(47,32);
+        out_tmp.range(31,16) = acc.val[5].range(15,0);
+        Output_1.write(out_tmp);
+        out_tmp.range(31,0) = acc.val[5].range(47,16);
+        Output_1.write(out_tmp);
       }
     }
   }
 }
 
-void tensor_weight_x(tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH],
+void tensor_weight_x(
+		hls::stream<bit32> & Input_1,
+		//tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH],
                      tensor_t tensor[MAX_HEIGHT][MAX_WIDTH])
 {
   hls::Window<1,3,tensor_t> buf;
@@ -417,7 +445,31 @@ void tensor_weight_x(tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH],
       tensor_t tmp;
       if(c<MAX_WIDTH)
       {
-        tmp = tensor_y[r][c];
+        //tmp = tensor_y[r][c];
+        bit32 buf;
+        buf = Input_1.read();
+        tmp.val[0].range(31,0) = buf.range(31,0);
+        buf = Input_1.read();
+        tmp.val[0].range(47,32) = buf.range(15,0);
+        tmp.val[1].range(15,0)  = buf.range(31,16);
+        buf = Input_1.read();
+        tmp.val[1].range(47,16) = buf.range(31,0);
+
+        buf = Input_1.read();
+        tmp.val[2].range(31,0) = buf.range(31,0);
+        buf = Input_1.read();
+        tmp.val[2].range(47,32) = buf.range(15,0);
+        tmp.val[3].range(15,0)  = buf.range(31,16);
+        buf = Input_1.read();
+        tmp.val[3].range(47,16) = buf.range(31,0);
+
+        buf = Input_1.read();
+        tmp.val[4].range(31,0) = buf.range(31,0);
+        buf = Input_1.read();
+        tmp.val[4].range(47,32) = buf.range(15,0);
+        tmp.val[5].range(15,0)  = buf.range(31,16);
+        buf = Input_1.read();
+        tmp.val[5].range(47,16) = buf.range(31,0);
       }
       else
       {
@@ -509,6 +561,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   hls::stream<ap_uint<32> > gradient_weight_y_out1;
   hls::stream<ap_uint<32> > gradient_weight_x_out1;
   hls::stream<ap_uint<32> > outer_product_out1;
+  hls::stream<ap_uint<32> > tensor_weight_y_out1;
   #pragma HLS DATAFLOW
 
   // FIFOs connecting the stages
@@ -577,8 +630,8 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z_calc_out1, gradient_weight_y_out1);
   gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
   outer_product(gradient_weight_x_out1, outer_product_out1);
-  tensor_weight_y(outer_product_out1, tensor_y);
-  tensor_weight_x(tensor_y, tensor);
+  tensor_weight_y(outer_product_out1, tensor_weight_y_out1);
+  tensor_weight_x(tensor_weight_y_out1, tensor);
   flow_calc(tensor, outputs);
 
 }
