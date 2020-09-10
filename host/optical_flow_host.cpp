@@ -77,13 +77,13 @@ int main(int argc, char ** argv)
       {
         frames[i][j](31 ,  0) = input_data[(MAX_WIDTH*i+j)%10240*2+1];
         frames[i][j](63,  32) = input_data[(MAX_WIDTH*i+j)%10240*2];
-        Input_1.write(frames[i][j]);
+        //Input_1.write(frames[i][j]);
       }
     }
 
     // run
     gettimeofday(&start, NULL);
-    optical_flow(Input_1, outputs);
+    optical_flow(frames, outputs);
     gettimeofday(&end, NULL);
 
   #endif
