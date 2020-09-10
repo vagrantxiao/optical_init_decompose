@@ -275,8 +275,10 @@ void gradient_weight_x(
 // outer product 
 void outer_product(
 		hls::stream<bit32> & Input_1,
+		hls::stream<bit32> & Output_1
 		//gradient_t gradient[MAX_HEIGHT][MAX_WIDTH],
-     outer_t outer_product[MAX_HEIGHT][MAX_WIDTH])
+     //outer_t outer_product[MAX_HEIGHT][MAX_WIDTH]
+		)
 {
   OUTER_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
   {
@@ -297,13 +299,36 @@ void outer_product(
       out.val[3] = (x*y);
       out.val[4] = (x*z);
       out.val[5] = (y*z);
-      outer_product[r][c] = out;
+      bit32 out_tmp;
+      out_tmp.range(31,0) = out.val[0].range(31,0);
+      Output_1.write(out_tmp);
+      out_tmp.range(15,0) = out.val[0].range(47,32);
+      out_tmp.range(31,16) = out.val[1].range(15,0);
+      Output_1.write(out_tmp);
+      out_tmp.range(31,0) = out.val[1].range(47,16);
+      Output_1.write(out_tmp);
+
+      out_tmp.range(31,0) = out.val[2].range(31,0);
+      Output_1.write(out_tmp);
+      out_tmp.range(15,0) = out.val[2].range(47,32);
+      out_tmp.range(31,16) = out.val[3].range(15,0);
+      Output_1.write(out_tmp);
+      out_tmp.range(31,0) = out.val[3].range(47,16);
+      Output_1.write(out_tmp);
+      out_tmp.range(31,0) = out.val[4].range(31,0);
+      Output_1.write(out_tmp);
+      out_tmp.range(15,0) = out.val[4].range(47,32);
+      out_tmp.range(31,16) = out.val[5].range(15,0);
+      Output_1.write(out_tmp);
+      out_tmp.range(31,0) = out.val[5].range(47,16);
+      Output_1.write(out_tmp);
     }
   }
 }
 
 // tensor weight
-void tensor_weight_y(outer_t outer[MAX_HEIGHT][MAX_WIDTH],
+void tensor_weight_y(//outer_t outer[MAX_HEIGHT][MAX_WIDTH],
+		hls::stream<bit32> & Input_1,
                      tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH])
 {
   hls::LineBuffer<3,MAX_WIDTH,outer_t> buf;
@@ -320,7 +345,31 @@ void tensor_weight_y(outer_t outer[MAX_HEIGHT][MAX_WIDTH],
       buf.shift_pixels_up(c);
       if(r<MAX_HEIGHT)
       {
-        tmp = outer[r][c];
+        //tmp = outer[r][c];
+        bit32 buf;
+        buf = Input_1.read();
+        tmp.val[0].range(31,0) = buf.range(31,0);
+        buf = Input_1.read();
+        tmp.val[0].range(47,32) = buf.range(15,0);
+        tmp.val[1].range(15,0)  = buf.range(31,16);
+        buf = Input_1.read();
+        tmp.val[1].range(47,16) = buf.range(31,0);
+
+        buf = Input_1.read();
+        tmp.val[2].range(31,0) = buf.range(31,0);
+        buf = Input_1.read();
+        tmp.val[2].range(47,32) = buf.range(15,0);
+        tmp.val[3].range(15,0)  = buf.range(31,16);
+        buf = Input_1.read();
+        tmp.val[3].range(47,16) = buf.range(31,0);
+
+        buf = Input_1.read();
+        tmp.val[4].range(31,0) = buf.range(31,0);
+        buf = Input_1.read();
+        tmp.val[4].range(47,32) = buf.range(15,0);
+        tmp.val[5].range(15,0)  = buf.range(31,16);
+        buf = Input_1.read();
+        tmp.val[5].range(47,16) = buf.range(31,0);
       }
       else
       {
@@ -459,6 +508,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   hls::stream<ap_uint<32> > gradient_z_calc_out1;
   hls::stream<ap_uint<32> > gradient_weight_y_out1;
   hls::stream<ap_uint<32> > gradient_weight_x_out1;
+  hls::stream<ap_uint<32> > outer_product_out1;
   #pragma HLS DATAFLOW
 
   // FIFOs connecting the stages
@@ -526,8 +576,8 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   gradient_z_calc(unpack_out2, unpack_out3, gradient_z_calc_out1);
   gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z_calc_out1, gradient_weight_y_out1);
   gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
-  outer_product(gradient_weight_x_out1, out_product);
-  tensor_weight_y(out_product, tensor_y);
+  outer_product(gradient_weight_x_out1, outer_product_out1);
+  tensor_weight_y(outer_product_out1, tensor_y);
   tensor_weight_x(tensor_y, tensor);
   flow_calc(tensor, outputs);
 
