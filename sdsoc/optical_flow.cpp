@@ -506,3 +506,18 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   flow_calc(tensor, outputs);
 
 }
+
+
+void data_gen(
+		hls::stream<bit32> & Output_1
+		)
+{
+#pragma HLS INTERFACE ap_hs port=Output_1
+
+	for (int i=0; i<1024; i++)
+	{
+#pragma HLS PIPELINE II=1
+		Output_1.write(i);
+	}
+}
+
