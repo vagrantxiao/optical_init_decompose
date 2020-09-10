@@ -51,7 +51,7 @@ void check_results(velocity_t output[MAX_HEIGHT][MAX_WIDTH])
 
 
   double avg_error = sum / (MAX_HEIGHT*MAX_WIDTH);
-  printf("Correct Average error: -0.625107 degrees\n");
+  printf("Correct Average error: -6.401300 degrees\n");
   printf("Average error: %lf degrees\n", avg_error);
 
 }
@@ -77,13 +77,13 @@ int main(int argc, char ** argv)
       {
         frames[i][j](31 ,  0) = input_data[(MAX_WIDTH*i+j)%10240*2+1];
         frames[i][j](63,  32) = input_data[(MAX_WIDTH*i+j)%10240*2];
-        //Input_1.write(frames[i][j]);
+        Input_1.write(frames[i][j]);
       }
     }
 
     // run
     gettimeofday(&start, NULL);
-    optical_flow(frames, outputs);
+    optical_flow(Input_1, outputs);
     gettimeofday(&end, NULL);
 
   #endif
