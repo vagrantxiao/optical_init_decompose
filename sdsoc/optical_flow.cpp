@@ -17,7 +17,8 @@
 const int max_width = MAX_WIDTH; 
 const int default_depth = MAX_WIDTH;
 // calculate gradient in x and y directions
-void gradient_xy_calc(hls::stream<bit32> & Input_1,
+void gradient_xy_calc(
+		hls::stream<bit32> & Input_1,
     pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
     pixel_t gradient_y[MAX_HEIGHT][MAX_WIDTH])
 {
@@ -106,11 +107,9 @@ void gradient_xy_calc(hls::stream<bit32> & Input_1,
 }
 
 // calculate gradient in the z direction
-void gradient_z_calc(input_t frame1[MAX_HEIGHT][MAX_WIDTH], 
-    input_t frame2[MAX_HEIGHT][MAX_WIDTH], 
-    input_t frame3[MAX_HEIGHT][MAX_WIDTH], 
-    input_t frame4[MAX_HEIGHT][MAX_WIDTH], 
-    input_t frame5[MAX_HEIGHT][MAX_WIDTH], 
+void gradient_z_calc(
+		hls::stream<bit32> & Input_1,
+		hls::stream<bit32> & Input_2,
     pixel_t gradient_z[MAX_HEIGHT][MAX_WIDTH])
 {
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
@@ -119,11 +118,20 @@ void gradient_z_calc(input_t frame1[MAX_HEIGHT][MAX_WIDTH],
     GRAD_Z_INNER: for(int c=0; c<MAX_WIDTH; c++)
     {
       #pragma HLS pipeline II=1
-      gradient_z[r][c] =((pixel_t)(frame1[r][c]*GRAD_WEIGHTS[0] 
-                        + frame2[r][c]*GRAD_WEIGHTS[1]
-                        + frame3[r][c]*GRAD_WEIGHTS[2]
-                        + frame4[r][c]*GRAD_WEIGHTS[3]
-                        + frame5[r][c]*GRAD_WEIGHTS[4]))/12;
+      bit32 buf;
+      buf = Input_1.read();
+      pixel_t in1 = (pixel_t)((input_t)(buf(7 ,  0)) >> 8);
+      pixel_t in2 = ((input_t)(buf(15,  8)) >> 8);
+      pixel_t in3 = ((input_t)(buf(23, 16)) >> 8);
+      pixel_t in4 = ((input_t)(buf(31, 24)) >> 8);
+      buf = Input_2.read();
+      pixel_t in5 = ((input_t)(buf(7, 0)) >> 8);
+
+      gradient_z[r][c] =((pixel_t)(in1*GRAD_WEIGHTS[0]
+                        + in2*GRAD_WEIGHTS[1]
+                        + in3*GRAD_WEIGHTS[2]
+                        + in4*GRAD_WEIGHTS[3]
+                        + in5*GRAD_WEIGHTS[4]))/12;
     }
   }
 }
@@ -407,6 +415,8 @@ void optical_flow(hls::stream<frames_t> & Input_1,
 {
   #pragma HLS data_pack variable=outputs
   hls::stream<ap_uint<32> > unpack_out1;
+  hls::stream<ap_uint<32> > unpack_out2;
+  hls::stream<ap_uint<32> > unpack_out3;
 
 
   #pragma HLS DATAFLOW
@@ -465,13 +475,15 @@ void optical_flow(hls::stream<frames_t> & Input_1,
       unpack_out1.write(buf(31,0));
       frame3_b[r][c] = ((input_t)(buf(23, 16)) >> 8);
       frame4_a[r][c] = ((input_t)(buf(31, 24)) >> 8);
+      unpack_out2.write(buf(31,0));
       frame5_a[r][c] = ((input_t)(buf(39, 32)) >> 8);
+      unpack_out3.write(buf(63,32));
     }
   }
   //
   // compute
   gradient_xy_calc(unpack_out1, gradient_x, gradient_y);
-  gradient_z_calc(frame1_a, frame2_a, frame3_b, frame4_a, frame5_a, gradient_z);
+  gradient_z_calc(unpack_out2, unpack_out3, gradient_z);
   gradient_weight_y(gradient_x, gradient_y, gradient_z, y_filtered);
   gradient_weight_x(y_filtered, filtered_gradient);
   outer_product(filtered_gradient, out_product);
