@@ -19,8 +19,9 @@ const int default_depth = MAX_WIDTH;
 // calculate gradient in x and y directions
 void gradient_xy_calc(
 		hls::stream<bit32> & Input_1,
-    pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
-    pixel_t gradient_y[MAX_HEIGHT][MAX_WIDTH])
+		hls::stream<bit32> & Output_1,
+		hls::stream<bit32> & Output_2
+		)
 {
   // our own line buffer
   static pixel_t buf[5][MAX_WIDTH];
@@ -94,13 +95,20 @@ void gradient_xy_calc(
           x_grad += window.getval(2,i)*GRAD_WEIGHTS[i];
           y_grad += window.getval(i,2)*GRAD_WEIGHTS[i];
         }
-        gradient_x[r-2][c-2] = x_grad/12;
-        gradient_y[r-2][c-2] = y_grad/12;
+        //gradient_x[r-2][c-2] = x_grad/12;
+        pixel_t out_tmp;
+        out_tmp = x_grad/12;
+        Output_1.write(out_tmp.range(31,0));
+        //gradient_y[r-2][c-2] = y_grad/12;
+        out_tmp = y_grad/12;
+        Output_2.write(out_tmp.range(31,0));
       }
       else if(r>=2 && c>=2)
       {
-        gradient_x[r-2][c-2] = 0;
-        gradient_y[r-2][c-2] = 0;
+        //gradient_x[r-2][c-2] = 0;
+        Output_1.write(0);
+        //gradient_y[r-2][c-2] = 0;
+        Output_2.write(0);
       }
     }
   }
@@ -137,8 +145,9 @@ void gradient_z_calc(
 }
 
 // average the gradient in y direction
-void gradient_weight_y(pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
-    pixel_t gradient_y[MAX_HEIGHT][MAX_WIDTH],
+void gradient_weight_y(
+		hls::stream<bit32> & Input_1,
+		hls::stream<bit32> & Input_2,
     pixel_t gradient_z[MAX_HEIGHT][MAX_WIDTH],
     gradient_t filt_grad[MAX_HEIGHT][MAX_WIDTH])
 {
@@ -156,8 +165,9 @@ void gradient_weight_y(pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
       {
         buf.shift_pixels_up(c);
         gradient_t tmp;
-        tmp.x = gradient_x[r][c];
-        tmp.y = gradient_y[r][c];
+        pixel_t in_tmp;
+        tmp.x.range(31,0) = Input_1.read();
+        tmp.y.range(31,0) = Input_2.read();
         tmp.z = gradient_z[r][c];
         buf.insert_bottom_row(tmp,c);
       }
@@ -417,7 +427,8 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   hls::stream<ap_uint<32> > unpack_out1;
   hls::stream<ap_uint<32> > unpack_out2;
   hls::stream<ap_uint<32> > unpack_out3;
-
+  hls::stream<ap_uint<32> > gradient_xy_calc_out1;
+  hls::stream<ap_uint<32> > gradient_xy_calc_out2;
 
   #pragma HLS DATAFLOW
 
@@ -482,9 +493,9 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   }
   //
   // compute
-  gradient_xy_calc(unpack_out1, gradient_x, gradient_y);
+  gradient_xy_calc(unpack_out1, gradient_xy_calc_out1, gradient_xy_calc_out2);
   gradient_z_calc(unpack_out2, unpack_out3, gradient_z);
-  gradient_weight_y(gradient_x, gradient_y, gradient_z, y_filtered);
+  gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z, y_filtered);
   gradient_weight_x(y_filtered, filtered_gradient);
   outer_product(filtered_gradient, out_product);
   tensor_weight_y(out_product, tensor_y);
