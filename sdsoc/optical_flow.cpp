@@ -216,8 +216,9 @@ void gradient_weight_y(
 // average gradient in the x direction
 void gradient_weight_x(
 		hls::stream<bit32> & Input_1,
-                       gradient_t filt_grad[MAX_HEIGHT][MAX_WIDTH])
-{
+		hls::stream<bit32> & Output_1
+)
+		{
   hls::Window<1,7,gradient_t> buf;
   const pixel_t GRAD_FILTER[] = {0.0755, 0.133, 0.1869, 0.2903, 0.1869, 0.133, 0.0755};
   GRAD_WEIGHT_X_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
@@ -257,18 +258,24 @@ void gradient_weight_x(
           acc.y += buf.getval(0,i).y*GRAD_FILTER[i];
           acc.z += buf.getval(0,i).z*GRAD_FILTER[i];
         }
-        filt_grad[r][c-3] = acc;
+        Output_1.write(acc.x(31,0));
+		Output_1.write(acc.y(31,0));
+		Output_1.write(acc.z(31,0));
       }
       else if(c>=3)
       {
-        filt_grad[r][c-3] = acc;
+        Output_1.write(acc.x(31,0));
+  		Output_1.write(acc.y(31,0));
+  		Output_1.write(acc.z(31,0));
       }
     }
   }
 }
 
 // outer product 
-void outer_product(gradient_t gradient[MAX_HEIGHT][MAX_WIDTH],
+void outer_product(
+		hls::stream<bit32> & Input_1,
+		//gradient_t gradient[MAX_HEIGHT][MAX_WIDTH],
      outer_t outer_product[MAX_HEIGHT][MAX_WIDTH])
 {
   OUTER_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
@@ -276,7 +283,10 @@ void outer_product(gradient_t gradient[MAX_HEIGHT][MAX_WIDTH],
     OUTER_INNER: for(int c=0; c<MAX_WIDTH; c++)
     {
       #pragma HLS pipeline II=1
-      gradient_t grad = gradient[r][c];
+      gradient_t grad;
+      grad.x.range(31,0)= Input_1.read();
+      grad.y.range(31,0)= Input_1.read();
+      grad.z.range(31,0)= Input_1.read();
       outer_pixel_t x = (outer_pixel_t) grad.x;
       outer_pixel_t y = (outer_pixel_t) grad.y;
       outer_pixel_t z = (outer_pixel_t) grad.z;
@@ -448,6 +458,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   hls::stream<ap_uint<32> > gradient_xy_calc_out2;
   hls::stream<ap_uint<32> > gradient_z_calc_out1;
   hls::stream<ap_uint<32> > gradient_weight_y_out1;
+  hls::stream<ap_uint<32> > gradient_weight_x_out1;
   #pragma HLS DATAFLOW
 
   // FIFOs connecting the stages
@@ -514,8 +525,8 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   gradient_xy_calc(unpack_out1, gradient_xy_calc_out1, gradient_xy_calc_out2);
   gradient_z_calc(unpack_out2, unpack_out3, gradient_z_calc_out1);
   gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z_calc_out1, gradient_weight_y_out1);
-  gradient_weight_x(gradient_weight_y_out1, filtered_gradient);
-  outer_product(filtered_gradient, out_product);
+  gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
+  outer_product(gradient_weight_x_out1, out_product);
   tensor_weight_y(out_product, tensor_y);
   tensor_weight_x(tensor_y, tensor);
   flow_calc(tensor, outputs);
