@@ -628,39 +628,8 @@ void optical_flow(
   // FIFOs connecting the stages
   static pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH];
   #pragma HLS STREAM variable=gradient_x depth=default_depth
-  static pixel_t gradient_y[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=gradient_y depth=default_depth
-  static pixel_t gradient_z[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=gradient_z depth=max_width*4
-  static gradient_t y_filtered[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=y_filtered depth=default_depth
-  static gradient_t filtered_gradient[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=filtered_gradient depth=default_depth
-  static outer_t out_product[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=out_product depth=default_depth
-  #pragma HLS data_pack variable=out_product
-  static tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=tensor_y depth=default_depth
-  #pragma HLS data_pack variable=tensor_y
-  static tensor_t tensor[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=tensor depth=default_depth
-  #pragma HLS data_pack variable=tensor
 
-  // FIFOs for streaming in, just for clarity
-  static input_t frame1_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame1_a depth=default_depth
-  static input_t frame2_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame2_a depth=default_depth
-  static input_t frame4_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame4_a depth=default_depth
-  static input_t frame5_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame5_a depth=default_depth
 
-  //Need to duplicate frame3 for the two calculations
-  static input_t frame3_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame3_a depth=default_depth
-  static input_t frame3_b[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame3_b depth=default_depth
 
   // stream in and organize the inputs
   static frames_t buf;
