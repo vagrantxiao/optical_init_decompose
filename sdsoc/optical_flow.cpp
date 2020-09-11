@@ -672,15 +672,8 @@ void optical_flow(
 
       // one wide read
       buf = Input_1.read();
-      // assign values to the FIFOs
-      frame1_a[r][c] = ((input_t)(buf(7 ,  0)) >> 8);
-      frame2_a[r][c] = ((input_t)(buf(15,  8)) >> 8);
-      frame3_a[r][c] = ((input_t)(buf(23, 16)) >> 8);
       unpack_out1.write(buf(31,0));
-      frame3_b[r][c] = ((input_t)(buf(23, 16)) >> 8);
-      frame4_a[r][c] = ((input_t)(buf(31, 24)) >> 8);
       unpack_out2.write(buf(31,0));
-      frame5_a[r][c] = ((input_t)(buf(39, 32)) >> 8);
       unpack_out3.write(buf(63,32));
     }
   }
