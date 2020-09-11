@@ -121,6 +121,7 @@ void gradient_xy_calc(
       }
 }
 
+#define BUFFER_SIZE 3000
 // calculate gradient in the z direction
 void gradient_z_calc(
 		hls::stream<bit32> & Input_1,
@@ -131,29 +132,43 @@ void gradient_z_calc(
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
   static int r = 0;
   static int c = 0;
+  static pixel_t ring_buf[BUFFER_SIZE];
+  static int read_ptr = 0;
+  static int write_ptr = 0;
 
       #pragma HLS pipeline II=1
-      bit32 buf;
-      buf = Input_1.read();
-      pixel_t in1 = (pixel_t)((input_t)(buf(7 ,  0)) >> 8);
-      pixel_t in2 = ((input_t)(buf(15,  8)) >> 8);
-      pixel_t in3 = ((input_t)(buf(23, 16)) >> 8);
-      pixel_t in4 = ((input_t)(buf(31, 24)) >> 8);
-      buf = Input_2.read();
-      pixel_t in5 = ((input_t)(buf(7, 0)) >> 8);
-      pixel_t out_tmp;
-      out_tmp =((pixel_t)(in1*GRAD_WEIGHTS[0]
-                        + in2*GRAD_WEIGHTS[1]
-                        + in3*GRAD_WEIGHTS[2]
-                        + in4*GRAD_WEIGHTS[3]
-                        + in5*GRAD_WEIGHTS[4]))/12;
-      Output_1.write(out_tmp.range(31,0));
-      c++;
-	  if(c==MAX_WIDTH)
+  	  if(r<MAX_HEIGHT && c<MAX_WIDTH){
+		  bit32 buf;
+		  buf = Input_1.read();
+		  pixel_t in1 = (pixel_t)((input_t)(buf(7 ,  0)) >> 8);
+		  pixel_t in2 = ((input_t)(buf(15,  8)) >> 8);
+		  pixel_t in3 = ((input_t)(buf(23, 16)) >> 8);
+		  pixel_t in4 = ((input_t)(buf(31, 24)) >> 8);
+		  buf = Input_2.read();
+		  pixel_t in5 = ((input_t)(buf(7, 0)) >> 8);
+		  pixel_t out_tmp;
+		  out_tmp =((pixel_t)(in1*GRAD_WEIGHTS[0]
+							+ in2*GRAD_WEIGHTS[1]
+							+ in3*GRAD_WEIGHTS[2]
+							+ in4*GRAD_WEIGHTS[3]
+							+ in5*GRAD_WEIGHTS[4]))/12;
+          ring_buf[write_ptr] = out_tmp;
+          write_ptr++;
+          if(write_ptr == BUFFER_SIZE) write_ptr=0;
+  	  }
+
+  	  if(r>=2 && c>=2){
+  		  Output_1.write(ring_buf[read_ptr].range(31,0));
+  		  read_ptr++;
+  		if(read_ptr == BUFFER_SIZE) read_ptr=0;
+  	  }
+
+	  c++;
+	  if(c==MAX_WIDTH+2)
 	  {
 	    c=0;
 	    r++;
-	    if(r==MAX_HEIGHT)
+	    if(r==MAX_HEIGHT+2)
 	    {
 	  	  r=0;
 	    }
@@ -718,10 +733,11 @@ void optical_flow(
     	if((r<MAX_HEIGHT) && (c<MAX_WIDTH))
 		{
 			unpack(Input_1, unpack_out1, unpack_out2, unpack_out3);
-			gradient_z_calc(unpack_out2, unpack_out3, gradient_z_calc_out1);
+
 		}
     	if((r<MAX_HEIGHT+2) && (c<MAX_WIDTH+2))
     	{
+    		gradient_z_calc(unpack_out2, unpack_out3, gradient_z_calc_out1);
     		gradient_xy_calc(unpack_out1, gradient_xy_calc_out1, gradient_xy_calc_out2);
     	}
 
