@@ -588,10 +588,9 @@ void flow_calc(
 		)
 {
   static outer_pixel_t buf[2];
-  FLOW_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
-  {
-    FLOW_INNER: for(int c=0; c<MAX_WIDTH; c++)
-    {
+  static int r = 0;
+  static int c = 0;
+
       #pragma HLS pipeline II=1
       tensor_t tmp_tensor;// = tensors[r][c];
       bit32 in_tmp;
@@ -653,8 +652,16 @@ void flow_calc(
       out_tmp = (vel_pixel_t)buf[1];
       Output_1.write(out_tmp.range(31,0));
 
-    }
-  }
+      c++;
+	  if(c==MAX_WIDTH)
+	  {
+		c=0;
+		r++;
+		if(r==MAX_HEIGHT)
+		{
+		  r=0;
+		}
+	  }
 }
 
 void unpack(
@@ -741,6 +748,11 @@ void optical_flow(
 		{
     		tensor_weight_x(tensor_weight_y_out1, tensor_weight_x_out1);
 		}
+
+    	if((r<MAX_HEIGHT+6) && (r>=6) && (c<MAX_WIDTH+6) && (c>=6))
+		{
+			flow_calc(tensor_weight_x_out1, Output_1);
+		}
     }
   }
 
@@ -753,7 +765,7 @@ void optical_flow(
 
 
 
-  flow_calc(tensor_weight_x_out1, Output_1);
+
 
 }
 
