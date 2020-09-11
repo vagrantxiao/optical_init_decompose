@@ -243,10 +243,9 @@ void gradient_weight_x(
 		{
   hls::Window<1,7,gradient_t> buf;
   const pixel_t GRAD_FILTER[] = {0.0755, 0.133, 0.1869, 0.2903, 0.1869, 0.133, 0.0755};
-  GRAD_WEIGHT_X_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
-  {
-    GRAD_WEIGHT_X_INNER: for(int c=0; c<MAX_WIDTH+3; c++)
-    {
+  static int r = 0;
+  static int c = 0;
+
       #pragma HLS pipeline II=1
       buf.shift_pixels_left();
       gradient_t tmp;
@@ -290,8 +289,18 @@ void gradient_weight_x(
   		Output_1.write(acc.y(31,0));
   		Output_1.write(acc.z(31,0));
       }
-    }
-  }
+
+      c++;
+	  if(c==MAX_WIDTH+3)
+	  {
+	    c=0;
+	    r++;
+	    if(r==MAX_HEIGHT)
+	    {
+	      r=0;
+	    }
+	  }
+
 }
 
 // outer product 
@@ -675,7 +684,7 @@ void optical_flow(
   for (r=0; r<MAX_HEIGHT+5; r++)
   {
 	printf ("r=%d\n", r);
-    for (c=0; c<MAX_WIDTH+2; c++)
+    for (c=0; c<MAX_WIDTH+5; c++)
     {
     	if((r<MAX_HEIGHT) && (c<MAX_WIDTH))
 		{
@@ -691,6 +700,10 @@ void optical_flow(
 		{
     	  gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z_calc_out1, gradient_weight_y_out1);
 		}
+    	if((r<MAX_HEIGHT+5) && (r>=5) && (c<MAX_WIDTH+5) && (c>=2))
+    	{
+    		gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
+    	}
 
     }
   }
@@ -700,7 +713,7 @@ void optical_flow(
   // compute
 
 
-  gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
+
   outer_product(gradient_weight_x_out1, outer_product_out1);
   tensor_weight_y(outer_product_out1, tensor_weight_y_out1);
   tensor_weight_x(tensor_weight_y_out1, tensor_weight_x_out1);
