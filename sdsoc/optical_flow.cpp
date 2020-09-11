@@ -374,10 +374,8 @@ void tensor_weight_y(//outer_t outer[MAX_HEIGHT][MAX_WIDTH],
 {
   hls::LineBuffer<3,MAX_WIDTH,outer_t> buf;
   const pixel_t TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
-  TENSOR_WEIGHT_Y_OUTER: for(int r=0; r<MAX_HEIGHT+1; r++)
-  {
-    TENSOR_WEIGHT_Y_INNER: for(int c=0; c<MAX_WIDTH; c++)
-    {
+  static int r = 0;
+  static int c = 0;
       #pragma HLS pipeline II=1
       
       outer_t tmp;
@@ -464,8 +462,16 @@ void tensor_weight_y(//outer_t outer[MAX_HEIGHT][MAX_WIDTH],
         Output_1.write(out_tmp);
 
       }
-    }
-  }
+      c++;
+	  if(c==MAX_WIDTH)
+	  {
+		c=0;
+		r++;
+		if(r==MAX_HEIGHT+1)
+		{
+		  r=0;
+		}
+	  }
 }
 
 void tensor_weight_x(
@@ -478,10 +484,10 @@ void tensor_weight_x(
   hls::Window<1,3,tensor_t> buf;
   const pixel_t TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
   //const float TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
-  TENSOR_WEIGHT_X_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
-  {
-    TENSOR_WEIGHT_X_INNER: for(int c=0; c<MAX_WIDTH+1; c++)
-    {
+  static int r = 0;
+  static int c = 0;
+
+
       #pragma HLS pipeline II=1
       buf.shift_pixels_left();
       tensor_t tmp;
@@ -563,8 +569,16 @@ void tensor_weight_x(
         Output_1.write(out_tmp);
 
       }
-    }
-  }
+      c++;
+	  if(c==MAX_WIDTH+1)
+	  {
+		c=0;
+		r++;
+		if(r==MAX_HEIGHT)
+		{
+		  r=0;
+		}
+	  }
 }
 
 // compute output flow
@@ -689,10 +703,10 @@ void optical_flow(
   static bit32 buf;
   int r, c;
 
-  for (r=0; r<MAX_HEIGHT+5; r++)
+  for (r=0; r<MAX_HEIGHT+6; r++)
   {
 	printf ("r=%d\n", r);
-    for (c=0; c<MAX_WIDTH+5; c++)
+    for (c=0; c<MAX_WIDTH+6; c++)
     {
     	if((r<MAX_HEIGHT) && (c<MAX_WIDTH))
 		{
@@ -717,6 +731,16 @@ void optical_flow(
     	{
     		outer_product(gradient_weight_x_out1, outer_product_out1);
     	}
+
+    	if((r<MAX_HEIGHT+6) && (r>=5) && (c<MAX_WIDTH+5) && (c>=5))
+		{
+    		tensor_weight_y(outer_product_out1, tensor_weight_y_out1);
+		}
+
+    	if((r<MAX_HEIGHT+6) && (r>=6) && (c<MAX_WIDTH+6) && (c>=5))
+		{
+    		tensor_weight_x(tensor_weight_y_out1, tensor_weight_x_out1);
+		}
     }
   }
 
@@ -727,8 +751,8 @@ void optical_flow(
 
 
 
-  tensor_weight_y(outer_product_out1, tensor_weight_y_out1);
-  tensor_weight_x(tensor_weight_y_out1, tensor_weight_x_out1);
+
+
   flow_calc(tensor_weight_x_out1, Output_1);
 
 }
