@@ -23,6 +23,10 @@ void gradient_xy_calc(
 		hls::stream<bit32> & Output_2
 		)
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Output_2
+#pragma HLS INTERFACE ap_hs port=Output_1
+
   // our own line buffer
   static pixel_t buf[5][MAX_WIDTH];
   #pragma HLS array_partition variable=buf complete dim=1
@@ -129,6 +133,10 @@ void gradient_z_calc(
 		hls::stream<bit32> & Output_1
 )
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Input_2
+#pragma HLS INTERFACE ap_hs port=Output_1
+
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
   static int r = 0;
   static int c = 0;
@@ -184,6 +192,12 @@ void gradient_weight_y(
    // gradient_t filt_grad[MAX_HEIGHT][MAX_WIDTH]
 )
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Input_2
+#pragma HLS INTERFACE ap_hs port=Input_3
+#pragma HLS INTERFACE ap_hs port=Output_1
+
+
   hls::LineBuffer<7,MAX_WIDTH,gradient_t> buf;
 
   const pixel_t GRAD_FILTER[] = {0.0755, 0.133, 0.1869, 0.2903, 0.1869, 0.133, 0.0755};
@@ -256,6 +270,8 @@ void gradient_weight_x(
 		hls::stream<bit32> & Output_1
 )
 		{
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Output_1
   hls::Window<1,7,gradient_t> buf;
   const pixel_t GRAD_FILTER[] = {0.0755, 0.133, 0.1869, 0.2903, 0.1869, 0.133, 0.0755};
   static int r = 0;
@@ -326,6 +342,8 @@ void outer_product(
      //outer_t outer_product[MAX_HEIGHT][MAX_WIDTH]
 		)
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Output_1
   static int r = 0;
   static int c = 0;
 
@@ -387,6 +405,8 @@ void tensor_weight_y(//outer_t outer[MAX_HEIGHT][MAX_WIDTH],
                      //tensor_t tensor_y[MAX_HEIGHT][MAX_WIDTH]
 												   )
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Output_1
   hls::LineBuffer<3,MAX_WIDTH,outer_t> buf;
   const pixel_t TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
   static int r = 0;
@@ -496,6 +516,8 @@ void tensor_weight_x(
                      //tensor_t tensor[MAX_HEIGHT][MAX_WIDTH]
 		)
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Output_1
   hls::Window<1,3,tensor_t> buf;
   const pixel_t TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
   //const float TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
@@ -602,6 +624,8 @@ void flow_calc(
 		hls::stream<bit32> & Output_1
 		)
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Output_1
   static outer_pixel_t buf[2];
   static int r = 0;
   static int c = 0;
@@ -686,6 +710,10 @@ void unpack(
 		hls::stream<bit32> & Output_3
 		)
 {
+#pragma HLS INTERFACE ap_hs port=Input_1
+#pragma HLS INTERFACE ap_hs port=Output_1
+#pragma HLS INTERFACE ap_hs port=Output_2
+#pragma HLS INTERFACE ap_hs port=Output_3
 	bit32 buf;
 	buf = Input_1.read();
 	Output_1.write(buf(31,0));
@@ -701,7 +729,6 @@ void optical_flow(
                   //velocity_t outputs[MAX_HEIGHT][MAX_WIDTH]
 		)
 {
-  #pragma HLS data_pack variable=outputs
   hls::stream<ap_uint<32> > unpack_out1("sb1");
   hls::stream<ap_uint<32> > unpack_out2("sb2");
   hls::stream<ap_uint<32> > unpack_out3("sb3");
@@ -717,7 +744,6 @@ void optical_flow(
 
   // FIFOs connecting the stages
   static pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=gradient_x depth=default_depth
 
 
 
