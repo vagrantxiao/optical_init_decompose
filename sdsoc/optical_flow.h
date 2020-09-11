@@ -18,6 +18,6 @@ const pixel_t TENSOR_FILTER[] = {0.3243, 0.3513, 0.3243};
 
 // top-level function 
 void optical_flow(hls::stream<frames_t> & Input_1,
-                  velocity_t outputs[MAX_HEIGHT][MAX_WIDTH]);
+		hls::stream<bit32> & Output_1);
 
 #endif

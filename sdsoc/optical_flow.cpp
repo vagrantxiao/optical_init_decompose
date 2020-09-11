@@ -529,9 +529,10 @@ void tensor_weight_x(
 }
 
 // compute output flow
-void flow_calc(//tensor_t tensors[MAX_HEIGHT][MAX_WIDTH],
+void flow_calc(
 		hls::stream<bit32> & Input_1,
-               velocity_t outputs[MAX_HEIGHT][MAX_WIDTH])
+		hls::stream<bit32> & Output_1
+		)
 {
   static outer_pixel_t buf[2];
   FLOW_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
@@ -593,16 +594,22 @@ void flow_calc(//tensor_t tensors[MAX_HEIGHT][MAX_WIDTH],
         buf[0] = buf[1] = 0;
       }
 
-      outputs[r][c].x = (vel_pixel_t)buf[0];
-      outputs[r][c].y = (vel_pixel_t)buf[1];
+      vel_pixel_t out_tmp;
+      out_tmp = (vel_pixel_t)buf[0];
+      Output_1.write(out_tmp.range(31,0));
+      out_tmp = (vel_pixel_t)buf[1];
+      Output_1.write(out_tmp.range(31,0));
 
     }
   }
 }
 
 // top-level kernel function
-void optical_flow(hls::stream<frames_t> & Input_1,
-                  velocity_t outputs[MAX_HEIGHT][MAX_WIDTH])
+void optical_flow(
+		hls::stream<frames_t> & Input_1,
+		hls::stream<bit32> & Output_1
+                  //velocity_t outputs[MAX_HEIGHT][MAX_WIDTH]
+		)
 {
   #pragma HLS data_pack variable=outputs
   hls::stream<ap_uint<32> > unpack_out1;
@@ -686,7 +693,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   outer_product(gradient_weight_x_out1, outer_product_out1);
   tensor_weight_y(outer_product_out1, tensor_weight_y_out1);
   tensor_weight_x(tensor_weight_y_out1, tensor_weight_x_out1);
-  flow_calc(tensor_weight_x_out1, outputs);
+  flow_calc(tensor_weight_x_out1, Output_1);
 
 }
 

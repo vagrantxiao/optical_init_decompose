@@ -60,6 +60,7 @@ void check_results(velocity_t output[MAX_HEIGHT][MAX_WIDTH])
 int main(int argc, char ** argv) 
 {
   hls::stream<frames_t> Input_1;
+  hls::stream<bit32> Output_1;
 
 
   printf("Optical Flow Application\n");
@@ -83,11 +84,18 @@ int main(int argc, char ** argv)
 
     // run
     gettimeofday(&start, NULL);
-    optical_flow(Input_1, outputs);
+    optical_flow(Input_1, Output_1);
     gettimeofday(&end, NULL);
 
   #endif
-
+    for (int i = 0; i < MAX_HEIGHT; i++)
+    {
+      for (int j = 0; j < MAX_WIDTH; j++)
+      {
+    	  outputs[i][j].x.range(31,0) = Output_1.read();
+    	  outputs[i][j].y.range(31,0) = Output_1.read();
+      }
+    }
   // check results
   printf("Checking results:\n");
 
