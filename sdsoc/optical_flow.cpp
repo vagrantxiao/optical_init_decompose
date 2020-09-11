@@ -36,10 +36,10 @@ void gradient_xy_calc(
 
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
 
-  GRAD_XY_OUTER: for(int r=0; r<MAX_HEIGHT+2; r++)
-  {
-    GRAD_XY_INNER: for(int c=0; c<MAX_WIDTH+2; c++)
-    {
+  static int r=0;
+  static int c = 0;
+
+
       #pragma HLS pipeline II=1
       // read out values from current line buffer
       for (int i = 0; i < 4; i ++ )
@@ -110,8 +110,16 @@ void gradient_xy_calc(
         //gradient_y[r-2][c-2] = 0;
         Output_2.write(0);
       }
-    }
-  }
+      c++;
+      if(c==MAX_WIDTH+2)
+      {
+    	  c=0;
+    	  r++;
+    	  if(r==MAX_HEIGHT+2)
+    	  {
+    		  r=0;
+    	  }
+      }
 }
 
 // calculate gradient in the z direction
@@ -122,10 +130,9 @@ void gradient_z_calc(
 )
 {
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
-  GRAD_Z_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
-  {
-    GRAD_Z_INNER: for(int c=0; c<MAX_WIDTH; c++)
-    {
+  static int r = 0;
+  static int c = 0;
+
       #pragma HLS pipeline II=1
       bit32 buf;
       buf = Input_1.read();
@@ -142,8 +149,16 @@ void gradient_z_calc(
                         + in4*GRAD_WEIGHTS[3]
                         + in5*GRAD_WEIGHTS[4]))/12;
       Output_1.write(out_tmp.range(31,0));
-    }
-  }
+      c++;
+	  if(c==MAX_WIDTH)
+	  {
+	    c=0;
+	    r++;
+	    if(r==MAX_HEIGHT)
+	    {
+	  	  r=0;
+	    }
+	  }
 }
 
 // average the gradient in y direction
@@ -648,17 +663,30 @@ void optical_flow(
 
   // stream in and organize the inputs
   static bit32 buf;
-  FRAMES_CP_OUTER: for (int r=0; r<MAX_HEIGHT; r++) 
+  int r, c;
+
+  for (r=0; r<MAX_HEIGHT+2; r++)
   {
-    FRAMES_CP_INNER: for (int c=0; c<MAX_WIDTH; c++) 
+    for (c=0; c<MAX_WIDTH+2; c++)
     {
-    	unpack(Input_1, unpack_out1, unpack_out2, unpack_out3);
+    	if((r<MAX_HEIGHT) && (c<MAX_WIDTH))
+		{
+			unpack(Input_1, unpack_out1, unpack_out2, unpack_out3);
+			gradient_z_calc(unpack_out2, unpack_out3, gradient_z_calc_out1);
+		}
+    	if((r<MAX_HEIGHT+2) && (c<MAX_WIDTH+2))
+    	{
+    		gradient_xy_calc(unpack_out1, gradient_xy_calc_out1, gradient_xy_calc_out2);
+    	}
+
     }
   }
+
+
   //
   // compute
-  gradient_xy_calc(unpack_out1, gradient_xy_calc_out1, gradient_xy_calc_out2);
-  gradient_z_calc(unpack_out2, unpack_out3, gradient_z_calc_out1);
+
+
   gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z_calc_out1, gradient_weight_y_out1);
   gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
   outer_product(gradient_weight_x_out1, outer_product_out1);
