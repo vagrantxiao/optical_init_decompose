@@ -311,10 +311,9 @@ void outer_product(
      //outer_t outer_product[MAX_HEIGHT][MAX_WIDTH]
 		)
 {
-  OUTER_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
-  {
-    OUTER_INNER: for(int c=0; c<MAX_WIDTH; c++)
-    {
+  static int r = 0;
+  static int c = 0;
+
       #pragma HLS pipeline II=1
       gradient_t grad;
       grad.x.range(31,0)= Input_1.read();
@@ -353,8 +352,17 @@ void outer_product(
       Output_1.write(out_tmp);
       out_tmp.range(31,0) = out.val[5].range(47,16);
       Output_1.write(out_tmp);
-    }
-  }
+
+      c++;
+	  if(c==MAX_WIDTH)
+	  {
+		c=0;
+		r++;
+		if(r==MAX_HEIGHT)
+		{
+		  r=0;
+		}
+	  }
 }
 
 // tensor weight
@@ -703,8 +711,12 @@ void optical_flow(
     	if((r<MAX_HEIGHT+5) && (r>=5) && (c<MAX_WIDTH+5) && (c>=2))
     	{
     		gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
-    	}
 
+    	}
+    	if((r<MAX_HEIGHT+5) && (r>=5) && (c<MAX_WIDTH+5) && (c>=5))
+    	{
+    		outer_product(gradient_weight_x_out1, outer_product_out1);
+    	}
     }
   }
 
@@ -714,7 +726,7 @@ void optical_flow(
 
 
 
-  outer_product(gradient_weight_x_out1, outer_product_out1);
+
   tensor_weight_y(outer_product_out1, tensor_weight_y_out1);
   tensor_weight_x(tensor_weight_y_out1, tensor_weight_x_out1);
   flow_calc(tensor_weight_x_out1, Output_1);
