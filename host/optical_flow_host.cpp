@@ -59,7 +59,7 @@ void check_results(velocity_t output[MAX_HEIGHT][MAX_WIDTH])
 
 int main(int argc, char ** argv) 
 {
-  hls::stream<frames_t> Input_1;
+  hls::stream<bit32> Input_1;
   hls::stream<bit32> Output_1;
 
 
@@ -78,7 +78,8 @@ int main(int argc, char ** argv)
       {
         frames[i][j](31 ,  0) = input_data[(MAX_WIDTH*i+j)%10240*2+1];
         frames[i][j](63,  32) = input_data[(MAX_WIDTH*i+j)%10240*2];
-        Input_1.write(frames[i][j]);
+        Input_1.write(frames[i][j](31 ,  0));
+        Input_1.write(frames[i][j](63,  32));
       }
     }
 

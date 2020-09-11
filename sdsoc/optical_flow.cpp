@@ -606,7 +606,7 @@ void flow_calc(
 
 // top-level kernel function
 void optical_flow(
-		hls::stream<frames_t> & Input_1,
+		hls::stream<bit32> & Input_1,
 		hls::stream<bit32> & Output_1
                   //velocity_t outputs[MAX_HEIGHT][MAX_WIDTH]
 		)
@@ -632,7 +632,7 @@ void optical_flow(
 
 
   // stream in and organize the inputs
-  static frames_t buf;
+  static bit32 buf;
   FRAMES_CP_OUTER: for (int r=0; r<MAX_HEIGHT; r++) 
   {
     FRAMES_CP_INNER: for (int c=0; c<MAX_WIDTH; c++) 
@@ -643,7 +643,8 @@ void optical_flow(
       buf = Input_1.read();
       unpack_out1.write(buf(31,0));
       unpack_out2.write(buf(31,0));
-      unpack_out3.write(buf(63,32));
+      buf = Input_1.read();
+      unpack_out3.write(buf(31,0));
     }
   }
   //
