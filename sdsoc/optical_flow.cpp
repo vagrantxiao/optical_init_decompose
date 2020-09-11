@@ -33,7 +33,6 @@ void gradient_xy_calc(
   
   // window buffer
   hls::Window<5,5,input_t> window;
-
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
 
   static int r=0;
@@ -173,10 +172,9 @@ void gradient_weight_y(
   hls::LineBuffer<7,MAX_WIDTH,gradient_t> buf;
 
   const pixel_t GRAD_FILTER[] = {0.0755, 0.133, 0.1869, 0.2903, 0.1869, 0.133, 0.0755};
-  GRAD_WEIGHT_Y_OUTER: for(int r=0; r<MAX_HEIGHT+3; r++)
-  {
-    GRAD_WEIGHT_Y_INNER: for(int c=0; c<MAX_WIDTH; c++)
-    {
+  static int r = 0;
+  static int c = 0;
+
       #pragma HLS pipeline II=1
       #pragma HLS dependence variable=buf inter false
 
@@ -224,8 +222,17 @@ void gradient_weight_y(
 	    Output_1.write(acc.y(31,0));
 	    Output_1.write(acc.z(31,0));
       }
-    }
-  }
+      c++;
+      if(c==MAX_WIDTH)
+	  {
+		c=0;
+		r++;
+		if(r==MAX_HEIGHT+3)
+		{
+		  r=0;
+		}
+	  }
+
 }
 
 // average gradient in the x direction
@@ -642,17 +649,17 @@ void optical_flow(
 		)
 {
   #pragma HLS data_pack variable=outputs
-  hls::stream<ap_uint<32> > unpack_out1;
-  hls::stream<ap_uint<32> > unpack_out2;
-  hls::stream<ap_uint<32> > unpack_out3;
-  hls::stream<ap_uint<32> > gradient_xy_calc_out1;
-  hls::stream<ap_uint<32> > gradient_xy_calc_out2;
-  hls::stream<ap_uint<32> > gradient_z_calc_out1;
-  hls::stream<ap_uint<32> > gradient_weight_y_out1;
-  hls::stream<ap_uint<32> > gradient_weight_x_out1;
-  hls::stream<ap_uint<32> > outer_product_out1;
-  hls::stream<ap_uint<32> > tensor_weight_y_out1;
-  hls::stream<ap_uint<32> > tensor_weight_x_out1;
+  hls::stream<ap_uint<32> > unpack_out1("sb1");
+  hls::stream<ap_uint<32> > unpack_out2("sb2");
+  hls::stream<ap_uint<32> > unpack_out3("sb3");
+  hls::stream<ap_uint<32> > gradient_xy_calc_out1("sb4");
+  hls::stream<ap_uint<32> > gradient_xy_calc_out2("sb5");
+  hls::stream<ap_uint<32> > gradient_z_calc_out1("sb6");
+  hls::stream<ap_uint<32> > gradient_weight_y_out1("sb7");
+  hls::stream<ap_uint<32> > gradient_weight_x_out1("sb8");
+  hls::stream<ap_uint<32> > outer_product_out1("sb9");
+  hls::stream<ap_uint<32> > tensor_weight_y_out1("sb10");
+  hls::stream<ap_uint<32> > tensor_weight_x_out1("sb11");
   #pragma HLS DATAFLOW
 
   // FIFOs connecting the stages
@@ -665,8 +672,9 @@ void optical_flow(
   static bit32 buf;
   int r, c;
 
-  for (r=0; r<MAX_HEIGHT+2; r++)
+  for (r=0; r<MAX_HEIGHT+5; r++)
   {
+	printf ("r=%d\n", r);
     for (c=0; c<MAX_WIDTH+2; c++)
     {
     	if((r<MAX_HEIGHT) && (c<MAX_WIDTH))
@@ -679,6 +687,11 @@ void optical_flow(
     		gradient_xy_calc(unpack_out1, gradient_xy_calc_out1, gradient_xy_calc_out2);
     	}
 
+    	if((r<MAX_HEIGHT+5) && (r>=2) && (c<MAX_WIDTH+2) && (c>=2))
+		{
+    	  gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z_calc_out1, gradient_weight_y_out1);
+		}
+
     }
   }
 
@@ -687,7 +700,6 @@ void optical_flow(
   // compute
 
 
-  gradient_weight_y(gradient_xy_calc_out1, gradient_xy_calc_out2, gradient_z_calc_out1, gradient_weight_y_out1);
   gradient_weight_x(gradient_weight_y_out1, gradient_weight_x_out1);
   outer_product(gradient_weight_x_out1, outer_product_out1);
   tensor_weight_y(outer_product_out1, tensor_weight_y_out1);
