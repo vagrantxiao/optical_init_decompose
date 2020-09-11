@@ -604,6 +604,21 @@ void flow_calc(
   }
 }
 
+void unpack(
+		hls::stream<bit32> & Input_1,
+		hls::stream<bit32> & Output_1,
+		hls::stream<bit32> & Output_2,
+		hls::stream<bit32> & Output_3
+		)
+{
+	bit32 buf;
+	buf = Input_1.read();
+	Output_1.write(buf(31,0));
+	Output_2.write(buf(31,0));
+	buf = Input_1.read();
+	Output_3.write(buf(31,0));
+
+}
 // top-level kernel function
 void optical_flow(
 		hls::stream<bit32> & Input_1,
@@ -637,14 +652,7 @@ void optical_flow(
   {
     FRAMES_CP_INNER: for (int c=0; c<MAX_WIDTH; c++) 
     {
-      #pragma HLS pipeline II=1
-
-      // one wide read
-      buf = Input_1.read();
-      unpack_out1.write(buf(31,0));
-      unpack_out2.write(buf(31,0));
-      buf = Input_1.read();
-      unpack_out3.write(buf(31,0));
+    	unpack(Input_1, unpack_out1, unpack_out2, unpack_out3);
     }
   }
   //
