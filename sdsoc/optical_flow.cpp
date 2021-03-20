@@ -27,9 +27,11 @@ void gradient_weight_y(
 		hls::stream< bit32> & Input_1,
 		hls::stream< bit32> & Input_2,
 		hls::stream< bit32> & Input_3,
-    gradient_t filt_grad[MAX_HEIGHT][MAX_WIDTH])
+		hls::stream< bit32> & Output_1)
 {
   hls::LineBuffer<7,MAX_WIDTH,gradient_t> buf;
+
+  bit32 out1_tmp, out2_tmp, out3_tmp;
 
   const pixel_t GRAD_FILTER[] = {0.0755, 0.133, 0.1869, 0.2903, 0.1869, 0.133, 0.0755};
   GRAD_WEIGHT_Y_OUTER: for(int r=0; r<MAX_HEIGHT+3; r++)
@@ -70,18 +72,33 @@ void gradient_weight_y(
           acc.y += buf.getval(i,c).y*GRAD_FILTER[i];
           acc.z += buf.getval(i,c).z*GRAD_FILTER[i];
         }
-        filt_grad[r-3][c] = acc;
+        out1_tmp(31, 0) = acc.x(31, 0);
+        Output_1.write(out1_tmp);
+        out1_tmp(31, 0) = acc.y(31, 0);
+        Output_1.write(out1_tmp);
+        out1_tmp(31, 0) = acc.z(31, 0);
+        Output_1.write(out1_tmp);
+
+        //filt_grad[r-3][c] = acc;
+
       }
       else if(r>=3)
       {
-        filt_grad[r-3][c] = acc;
+        //filt_grad[r-3][c] = acc;
+        out1_tmp(31, 0) = acc.x(31, 0);
+        Output_1.write(out1_tmp);
+        out1_tmp(31, 0) = acc.y(31, 0);
+        Output_1.write(out1_tmp);
+        out1_tmp(31, 0) = acc.z(31, 0);
+        Output_1.write(out1_tmp);
+
       }
     }
   }
 }
 
 // average gradient in the x direction
-void gradient_weight_x(gradient_t y_filt[MAX_HEIGHT][MAX_WIDTH],
+void gradient_weight_x(hls::stream< bit32> & Input_1,
                        gradient_t filt_grad[MAX_HEIGHT][MAX_WIDTH])
 {
   hls::Window<1,7,gradient_t> buf;
@@ -95,7 +112,10 @@ void gradient_weight_x(gradient_t y_filt[MAX_HEIGHT][MAX_WIDTH],
       gradient_t tmp;
       if(c<MAX_WIDTH)
       {
-        tmp = y_filt[r][c];
+        //tmp = y_filt[r][c];
+        tmp.x(31, 0) = Input_1.read();
+        tmp.y(31, 0) = Input_1.read();
+        tmp.z(31, 0) = Input_1.read();
       }
       else
       {
@@ -305,8 +325,6 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   #pragma HLS DATAFLOW
 
   // FIFOs connecting the stages
-  static gradient_t y_filtered[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=y_filtered depth=default_depth
   static gradient_t filtered_gradient[MAX_HEIGHT][MAX_WIDTH];
   #pragma HLS STREAM variable=filtered_gradient depth=default_depth
   static outer_t out_product[MAX_HEIGHT][MAX_WIDTH];
@@ -331,6 +349,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   hls::stream< bit32 > gradient_x;
   hls::stream< bit32 > gradient_y;
   hls::stream< bit32 > gradient_z;
+  hls::stream< bit32 > y_filtered;
 
 
   unpack(Input_1, frame1_a, frame2_a, frame4_a, frame5_a, frame3_a, frame3_b);
