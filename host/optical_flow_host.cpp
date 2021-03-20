@@ -12,95 +12,104 @@
 #include <getopt.h>
 #include <string>
 #include <time.h>
-#define SDSOC
-
-
 #include <sys/time.h>
-
-
-#ifdef SDSOC
-  // sdsoc headers
-  //#include "sds_lib.h"
-  // hardware function declaration
-  #include "../sdsoc/optical_flow.h"
-#endif
-
-// here we use an image library to handle file IO
-
-// other headers
+#include "utils.h"
 #include "typedefs.h"
-#include "input_data.h"
+#include "check_result.h"
+#include "../sdsoc/optical_flow.h"
 
 
-
-void check_results(velocity_t output[MAX_HEIGHT][MAX_WIDTH])
+void data_gen(
+		hls::stream< frames_t > &Output_1)
 {
-  double sum = 0;
-  // copy the output into the float image
-  for (int i = 0; i < MAX_HEIGHT; i++)
-  {
-    for (int j = 0; j < MAX_WIDTH; j++)
-    {
-
-        double out_x = output[i][j].x;
-        double out_y = output[i][j].y;
-        //printf("out_x=%f, out_y=%f\n", out_x, out_y);
-        sum += (out_x+out_y);
-    }
-  }
+#pragma HLS interface ap_hs port=Output_1
 
 
-  double avg_error = sum / (MAX_HEIGHT*MAX_WIDTH);
-  printf("Correct Average error: -6.401300 degrees\n");
-  printf("Average error: %lf degrees\n", avg_error);
+	#include "./input_data.h"
+	#pragma HLS ARRAY_PARTITION variable=input_data cyclic factor=2 dim=1
 
+	int i;
+	for (i=0; i<446464; i++)
+	{
+#pragma HLS pipeline II=2
+		frames_t tmp;
+		tmp(63,32) = input_data[i*2];
+		//tmp(63,32) = 0;
+		tmp(31, 0) = input_data[i*2+1];
+
+		Output_1.write(tmp);
+		//Output_1.write(tmp(95,64));
+		//Output_1.write(tmp(127,96));
+	}
 }
+
 
 
 int main(int argc, char ** argv) 
 {
-  hls::stream<bit32> Input_1;
-  hls::stream<bit32> Output_1;
-
-
   printf("Optical Flow Application\n");
-  struct timeval start, end;
-  // sdsoc version host code
-  #ifdef SDSOC
-    // input and output buffers
-    frames_t frames[MAX_HEIGHT][MAX_WIDTH];
-    velocity_t outputs[MAX_HEIGHT][MAX_WIDTH];
 
-    // pack the values
-    for (int i = 0; i < MAX_HEIGHT; i++) 
-    {
-      for (int j = 0; j < MAX_WIDTH; j++) 
-      {
-        frames[i][j](31 ,  0) = input_data[(MAX_WIDTH*i+j)%10240*2+1];
-        frames[i][j](63,  32) = input_data[(MAX_WIDTH*i+j)%10240*2];
-        Input_1.write(frames[i][j](31 ,  0));
-        Input_1.write(frames[i][j](63,  32));
-      }
-    }
+  // parse command line arguments
+  std::string dataPath("");
+  std::string outFile("");
+
+  // for sw and sdsoc versions
+  parse_sdsoc_command_line_args(argc, argv, dataPath, outFile);
+
+  // create actual file names according to the datapath
+  std::string frame_files[5];
+  std::string reference_file;
+  frame_files[0] = dataPath + "/frame1.ppm";
+  frame_files[1] = dataPath + "/frame2.ppm";
+  frame_files[2] = dataPath + "/frame3.ppm";
+  frame_files[3] = dataPath + "/frame4.ppm";
+  frame_files[4] = dataPath + "/frame5.ppm";
+  reference_file = dataPath + "/ref.flo";
+
+  // read in images and convert to grayscale
+  printf("Reading input files ... \n");
+
+  CByteImage imgs[5];
+  for (int i = 0; i < 5; i++) 
+  {
+    CByteImage tmpImg;
+    ReadImage(tmpImg, frame_files[i].c_str());
+    imgs[i] = ConvertToGray(tmpImg);
+  }
+
+  // read in reference flow file
+  printf("Reading reference output flow... \n");
+
+  CFloatImage refFlow;
+  ReadFlowFile(refFlow, reference_file.c_str());
+
+  // timers
+  struct timeval start, end;
+
+  // sdsoc version host code
+    // input and output buffers
+    //static frames_t frames[MAX_HEIGHT][MAX_WIDTH];
+    static velocity_t outputs[MAX_HEIGHT][MAX_WIDTH];
+
+
+    ap_uint<128>  tmpframes;
+    static hls::stream< frames_t > frames("test1");
+    static hls::stream< ap_uint<32> > flo_out("test2");
+
+    data_gen(frames);
+    printf("Start!\n");
 
     // run
     gettimeofday(&start, NULL);
-    optical_flow(Input_1, Output_1);
+    optical_flow(frames, outputs);
+    printf("Almost there!/n");
     gettimeofday(&end, NULL);
 
-  #endif
-    for (int i = 0; i < MAX_HEIGHT; i++)
-    {
-      for (int j = 0; j < MAX_WIDTH; j++)
-      {
-    	  outputs[i][j].x.range(31,0) = Output_1.read();
-    	  outputs[i][j].y.range(31,0) = Output_1.read();
-      }
-    }
+
   // check results
   printf("Checking results:\n");
-
-  check_results(outputs);
+  printf("The right Average error should be 32.058417\n");
+  check_results(outputs, refFlow, outFile);
 
   // print time
   long long elapsed = (end.tv_sec - start.tv_sec) * 1000000LL + end.tv_usec - start.tv_usec;   
