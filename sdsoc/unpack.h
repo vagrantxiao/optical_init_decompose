@@ -5,6 +5,7 @@ void unpack(
 		input_t frame2_a[MAX_HEIGHT][MAX_WIDTH],
 		input_t frame4_a[MAX_HEIGHT][MAX_WIDTH],
 		input_t frame5_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame3_a[MAX_HEIGHT][MAX_WIDTH],
+		hls::stream< bit32 > & Output_1,
+		//input_t frame3_a[MAX_HEIGHT][MAX_WIDTH],
 		input_t frame3_b[MAX_HEIGHT][MAX_WIDTH]
 									 );

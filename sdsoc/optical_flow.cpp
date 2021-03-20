@@ -17,7 +17,9 @@
 const int max_width = MAX_WIDTH; 
 const int default_depth = MAX_WIDTH;
 // calculate gradient in x and y directions
-void gradient_xy_calc(input_t frame[MAX_HEIGHT][MAX_WIDTH],
+void gradient_xy_calc(
+		hls::stream< bit32 > & Input_1,
+		//input_t frame[MAX_HEIGHT][MAX_WIDTH],
     pixel_t gradient_x[MAX_HEIGHT][MAX_WIDTH],
     pixel_t gradient_y[MAX_HEIGHT][MAX_WIDTH])
 {
@@ -31,6 +33,7 @@ void gradient_xy_calc(input_t frame[MAX_HEIGHT][MAX_WIDTH],
   
   // window buffer
   hls::Window<5,5,input_t> window;
+  bit32 in_tmp;
 
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
 
@@ -43,9 +46,12 @@ void gradient_xy_calc(input_t frame[MAX_HEIGHT][MAX_WIDTH],
       for (int i = 0; i < 4; i ++ )
         smallbuf[i] = buf[i+1][c];
       // the new value is either 0 or read from frame
-      if (r<MAX_HEIGHT && c<MAX_WIDTH)
-        smallbuf[4] = (pixel_t)(frame[r][c]);
-      else if (c < MAX_WIDTH)
+      if (r<MAX_HEIGHT && c<MAX_WIDTH){
+    	  input_t frame;
+    	  in_tmp = Input_1.read();
+    	  frame(16, 0) = in_tmp(16, 0);
+    	  smallbuf[4] = (pixel_t)(frame);
+      } else if (c < MAX_WIDTH)
         smallbuf[4] = 0;
       // update line buffer
       if(r<MAX_HEIGHT && c<MAX_WIDTH)
@@ -437,7 +443,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   #pragma HLS STREAM variable=frame5_a depth=default_depth
 
   //Need to duplicate frame3 for the two calculations
-  static input_t frame3_a[MAX_HEIGHT][MAX_WIDTH];
+  hls::stream< bit32 > frame3_a;
   #pragma HLS STREAM variable=frame3_a depth=default_depth
   static input_t frame3_b[MAX_HEIGHT][MAX_WIDTH];
   #pragma HLS STREAM variable=frame3_b depth=default_depth
