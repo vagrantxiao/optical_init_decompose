@@ -13,7 +13,7 @@ const int MAX_HEIGHT = 436;
 const int MAX_WIDTH = 1024;
 #include "hls_stream.h"
 #define SDSOC
-
+#include <hls_video.h>
 // basic typedefs
 #ifdef SDSOC
 	#include "ap_fixed.h"
