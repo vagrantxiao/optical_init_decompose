@@ -108,24 +108,39 @@ void gradient_xy_calc(
 }
 
 // calculate gradient in the z direction
-void gradient_z_calc(input_t frame1[MAX_HEIGHT][MAX_WIDTH],
-    input_t frame2[MAX_HEIGHT][MAX_WIDTH],
-    input_t frame3[MAX_HEIGHT][MAX_WIDTH],
-    input_t frame4[MAX_HEIGHT][MAX_WIDTH],
-    input_t frame5[MAX_HEIGHT][MAX_WIDTH],
-    pixel_t gradient_z[MAX_HEIGHT][MAX_WIDTH])
+void gradient_z_calc(
+	hls::stream< bit32> & Input_1,
+	hls::stream< bit32 > & Input_2,
+	hls::stream< bit32 > & Input_3,
+	hls::stream< bit32 > & Input_4,
+	hls::stream< bit32 > & Input_5,
+	pixel_t gradient_z[MAX_HEIGHT][MAX_WIDTH])
 {
+
+	input_t frame1, frame2, frame3, frame4, frame5;
+	bit32 in1_tmp, in2_tmp, in3_tmp, in4_tmp, in5_tmp;
+
   const int GRAD_WEIGHTS[] =  {1,-8,0,8,-1};
   GRAD_Z_OUTER: for(int r=0; r<MAX_HEIGHT; r++)
   {
     GRAD_Z_INNER: for(int c=0; c<MAX_WIDTH; c++)
     {
       #pragma HLS pipeline II=1
-      gradient_z[r][c] =((pixel_t)(frame1[r][c]*GRAD_WEIGHTS[0]
-                        + frame2[r][c]*GRAD_WEIGHTS[1]
-                        + frame3[r][c]*GRAD_WEIGHTS[2]
-                        + frame4[r][c]*GRAD_WEIGHTS[3]
-                        + frame5[r][c]*GRAD_WEIGHTS[4]))/12;
+      in1_tmp = Input_1.read();
+      frame1(16, 0) = in1_tmp(16, 0);
+      in2_tmp = Input_2.read();
+      frame2(16, 0) = in2_tmp(16, 0);
+      in3_tmp = Input_3.read();
+      frame3(16, 0) = in3_tmp(16, 0);
+      in4_tmp = Input_4.read();
+      frame4(16, 0) = in4_tmp(16, 0);
+      in5_tmp = Input_5.read();
+      frame5(16, 0) = in5_tmp(16, 0);
+      gradient_z[r][c] =((pixel_t)(frame1*GRAD_WEIGHTS[0]
+                        + frame2*GRAD_WEIGHTS[1]
+                        + frame3*GRAD_WEIGHTS[2]
+                        + frame4*GRAD_WEIGHTS[3]
+                        + frame5*GRAD_WEIGHTS[4]))/12;
     }
   }
 }
@@ -433,20 +448,14 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   #pragma HLS data_pack variable=tensor
 
   // FIFOs for streaming in, just for clarity
-  static input_t frame1_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame1_a depth=default_depth
-  static input_t frame2_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame2_a depth=default_depth
-  static input_t frame4_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame4_a depth=default_depth
-  static input_t frame5_a[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame5_a depth=default_depth
 
   //Need to duplicate frame3 for the two calculations
   hls::stream< bit32 > frame3_a;
-  #pragma HLS STREAM variable=frame3_a depth=default_depth
-  static input_t frame3_b[MAX_HEIGHT][MAX_WIDTH];
-  #pragma HLS STREAM variable=frame3_b depth=default_depth
+  hls::stream< bit32 > frame1_a;
+  hls::stream< bit32 > frame2_a;
+  hls::stream< bit32 > frame4_a;
+  hls::stream< bit32 > frame5_a;
+  hls::stream< bit32 > frame3_b;
 
 
   unpack(Input_1, frame1_a, frame2_a, frame4_a, frame5_a, frame3_a, frame3_b);

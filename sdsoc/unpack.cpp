@@ -2,18 +2,17 @@
 
 void unpack(
 		hls::stream<frames_t> & Input_1,
-		input_t frame1_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame2_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame4_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame5_a[MAX_HEIGHT][MAX_WIDTH],
 		hls::stream< bit32 > & Output_1,
-	//	input_t frame3_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame3_b[MAX_HEIGHT][MAX_WIDTH]
+		hls::stream< bit32 > & Output_2,
+		hls::stream< bit32 > & Output_3,
+		hls::stream< bit32 > & Output_4,
+		hls::stream< bit32 > & Output_5,
+		hls::stream< bit32 > & Output_6
 									 )
 {
 
 	static frames_t buf;
-	input_t frame3_a;
+	input_t frame1_a, frame2_a, frame3_a, frame4_a, frame5_a, frame3_b;
 	bit32 out_tmp;
 	out_tmp = 0;
 	FRAMES_CP_OUTER: for (int r=0; r<MAX_HEIGHT; r++)
@@ -27,14 +26,37 @@ void unpack(
 		  // printf("0x%08x\n",(unsigned int) buf(63, 32));
 		  // printf("0x%08x\n",(unsigned int) buf(31,  0));
 		  // assign values to the FIFOs
-		  frame1_a[r][c] = ((input_t)(buf(7 ,  0)) >> 8);
-		  frame2_a[r][c] = ((input_t)(buf(15,  8)) >> 8);
+
+
+		  frame1_a = ((input_t)(buf(7 ,  0)) >> 8);
+		  out_tmp(16, 0) = frame1_a(16, 0);
+		  Output_1.write(out_tmp);
+
+
+		  frame2_a = ((input_t)(buf(15,  8)) >> 8);
+		  out_tmp(16, 0) = frame2_a(16, 0);
+		  Output_2.write(out_tmp);
+
+
 		  frame3_a = ((input_t)(buf(23, 16)) >> 8);
 		  out_tmp(16, 0) = frame3_a(16, 0);
-		  Output_1.write(out_tmp);
-		  frame3_b[r][c] = ((input_t)(buf(23, 16)) >> 8);
-		  frame4_a[r][c] = ((input_t)(buf(31, 24)) >> 8);
-		  frame5_a[r][c] = ((input_t)(buf(39, 32)) >> 8);
+		  Output_5.write(out_tmp);
+
+
+		  frame3_b = ((input_t)(buf(23, 16)) >> 8);
+		  out_tmp(16, 0) = frame3_b(16, 0);
+		  Output_6.write(out_tmp);
+
+
+		  frame4_a = ((input_t)(buf(31, 24)) >> 8);
+		  out_tmp(16, 0) = frame4_a(16, 0);
+		  Output_3.write(out_tmp);
+
+
+		  frame5_a = ((input_t)(buf(39, 32)) >> 8);
+		  out_tmp(16, 0) = frame5_a(16, 0);
+		  Output_4.write(out_tmp);
+
 		}
 	  }
 

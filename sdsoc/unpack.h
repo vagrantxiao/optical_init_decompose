@@ -1,11 +1,9 @@
 
 void unpack(
 		hls::stream<frames_t> & Input_1,
-		input_t frame1_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame2_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame4_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame5_a[MAX_HEIGHT][MAX_WIDTH],
 		hls::stream< bit32 > & Output_1,
-		//input_t frame3_a[MAX_HEIGHT][MAX_WIDTH],
-		input_t frame3_b[MAX_HEIGHT][MAX_WIDTH]
-									 );
+		hls::stream< bit32 > & Output_2,
+		hls::stream< bit32 > & Output_3,
+		hls::stream< bit32 > & Output_4,
+		hls::stream< bit32 > & Output_5,
+		hls::stream< bit32 > & Output_6);
