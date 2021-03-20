@@ -12,7 +12,7 @@
 
 // use HLS fixed point
 #include "ap_fixed.h"
-
+#include "unpack.h"
 // define these constants so they can be used in pragma
 const int max_width = MAX_WIDTH; 
 const int default_depth = MAX_WIDTH;
@@ -443,27 +443,7 @@ void optical_flow(hls::stream<frames_t> & Input_1,
   #pragma HLS STREAM variable=frame3_b depth=default_depth
 
 
-  // stream in and organize the inputs
-  static frames_t buf;
-  FRAMES_CP_OUTER: for (int r=0; r<MAX_HEIGHT; r++) 
-  {
-    FRAMES_CP_INNER: for (int c=0; c<MAX_WIDTH; c++) 
-    {
-      #pragma HLS pipeline II=1
-
-      // one wide read
-      buf = Input_1.read();
-      // printf("0x%08x\n",(unsigned int) buf(63, 32));
-      // printf("0x%08x\n",(unsigned int) buf(31,  0));
-      // assign values to the FIFOs
-      frame1_a[r][c] = ((input_t)(buf(7 ,  0)) >> 8);
-      frame2_a[r][c] = ((input_t)(buf(15,  8)) >> 8);
-      frame3_a[r][c] = ((input_t)(buf(23, 16)) >> 8);
-      frame3_b[r][c] = ((input_t)(buf(23, 16)) >> 8);
-      frame4_a[r][c] = ((input_t)(buf(31, 24)) >> 8);
-      frame5_a[r][c] = ((input_t)(buf(39, 32)) >> 8);
-    }
-  }
+  unpack(Input_1, frame1_a, frame2_a, frame4_a, frame5_a, frame3_a, frame3_b);
   //
   // compute
   gradient_xy_calc(frame3_a, gradient_x, gradient_y);
